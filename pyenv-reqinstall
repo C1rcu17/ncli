@@ -1,0 +1,17 @@
+#!/bin/bash
+
+. common.inc.sh
+
+USAGE="${0} <requirements_file> <location>"
+
+check_n_args ${#} 2 "${USAGE}"
+
+REQUIREMENTS="${1}"
+LOCATION="$(abs_path "${2}")"
+
+if [ -f "${REQUIREMENTS}" ]; then
+  . "${LOCATION}/bin/activate"
+  pip install -r "${REQUIREMENTS}"
+fi
+
+# pip freeze -lr requirements.txt
