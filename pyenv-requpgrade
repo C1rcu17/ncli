@@ -1,0 +1,11 @@
+#!/bin/bash
+
+. common.inc.sh
+
+check_n_args ${#} 1 "${0} <location>"
+LOCATION="${1}"
+
+test ! -d "${LOCATION}" && exit_error "Directory "${LOCATION}" not found" 1
+
+. "${LOCATION}/bin/activate"
+pip list -ol --format legacy  | cut -d' ' -f1 | xargs -I% pip install -U %

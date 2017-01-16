@@ -2,20 +2,17 @@
 
 . common.inc.sh
 
-USAGE="${0} <python_prog> <location>"
-
-check_n_args ${#} 2 "${USAGE}"
-
+check_n_args ${#} 2 "${0} <python_prog> <location>"
 PYTHON="${1}"
-LOCATION="$(abs_path "${2}")"
+LOCATION="${2}"
 
 check_cmd virtualenv >/dev/null
 check_cmd "${PYTHON}" >/dev/null
+test -d "${LOCATION}" && exit_error "Directory "${LOCATION}" exists" 1
 
 if [ ! -d "${LOCATION}" ]; then
-  virtualenv --python="${PYTHON}" "${LOCATION}" >/dev/null 2>&1
+  virtualenv --python="${PYTHON}" "${LOCATION}"
   sed -i '4i VIRTUAL_ENV_DISABLE_PROMPT=1\n' "${LOCATION}/bin/activate"
-  exit 0
-else
-  exit 1
+  . "${LOCATION}/bin/activate"
+  pip install -U pip
 fi

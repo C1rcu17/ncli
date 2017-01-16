@@ -2,12 +2,15 @@
 
 . common.inc.sh
 
-check_n_args ${#} 2 "${0} <requirements_file> <location>"
+check_n_args ${#} 3 "${0} <requirements_file> <new_requirements_file> <location>"
 REQUIREMENTS="${1}"
-LOCATION="${2}"
+NEW_REQUIREMENTS="${2}"
+LOCATION="${3}"
 
 test ! -f "${REQUIREMENTS}" && exit_error "File "${REQUIREMENTS}" not found" 1
 test ! -d "${LOCATION}" && exit_error "Directory "${LOCATION}" not found" 1
 
 . "${LOCATION}/bin/activate"
-pip install -r "${REQUIREMENTS}"
+
+NEW_FREEZE="$(pip freeze -lr "${REQUIREMENTS}")"
+echo "${NEW_FREEZE}" > "${NEW_REQUIREMENTS}"
