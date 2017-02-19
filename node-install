@@ -13,4 +13,4 @@ ln -sfn "${LOCATION}" current
 export PATH="$(pwd)/current/bin:${PATH}"
 
 npm install -g npm
-npm install -g bower gulp node-sass less clean-css postcss-cli autoprefixer uglify-js pm2
+npm install -g bower
