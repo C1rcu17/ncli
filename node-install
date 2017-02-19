@@ -1,0 +1,16 @@
+#!/bin/bash
+
+. common.inc.sh
+
+ARCHIVE="$(wget -qO- https://nodejs.org/dist/latest-boron/SHASUMS256.txt | awk '{print $2}' | grep linux-x64.tar.xz)"
+LOCATION="$(echo "${ARCHIVE}" | rev | cut -d'.' -f3- | rev)"
+
+test -d "${LOCATION}" && exit_error "Node.js already in the latest version" 1
+
+wget -qO- "https://nodejs.org/dist/latest-boron/${ARCHIVE}" | tar -xJf -
+ln -sfn "${LOCATION}" current
+
+export PATH="$(pwd)/current/bin:${PATH}"
+
+npm install -g npm
+npm install -g bower gulp node-sass less clean-css postcss-cli autoprefixer uglify-js pm2
