@@ -1,0 +1,9 @@
+#!/bin/bash
+
+. common.inc.sh
+
+check_cmd adb >/dev/null
+
+sudo adb kill-server
+sudo adb start-server
+adb wait-for-usb-device

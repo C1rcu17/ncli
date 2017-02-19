@@ -1,0 +1,11 @@
+#!/bin/bash
+
+. common.inc.sh
+
+check_cmd adb >/dev/null
+
+adb shell am start -n com.sand.airdroid/com.sand.airdroid.ui.main.Main2Activity_
+adb forward --remove-all
+adb forward tcp:8888 tcp:8888
+adb forward --list
+xdg-open http://127.0.0.1:8888
