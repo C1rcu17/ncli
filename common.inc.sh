@@ -44,3 +44,25 @@ check_cmd()
     exit_error "Command not found: ${1}" 1
   fi
 }
+
+check_pkgs()
+{
+  local missing=""
+  local pkg
+
+  for pkg in "${@}"; do
+    dpkg-query -s "${pkg}" 2>/dev/null | grep -q ^"Status: install ok installed"$
+
+    if [ ${?} -ne 0 ]; then
+      if [ -z "${missing}" ]; then
+        missing="Missing packages:"
+      fi
+
+      missing="${missing} ${pkg}"
+    fi
+  done
+
+  if [ ! -z "${missing}" ]; then
+    exit_error "${missing}" 1
+  fi
+}
