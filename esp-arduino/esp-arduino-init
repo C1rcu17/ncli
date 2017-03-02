@@ -1,0 +1,29 @@
+#!/bin/bash
+
+. common.inc.sh
+
+check_n_args ${#} 1 "${0} <location>"
+LOCATION="${1}"
+
+test -d "${LOCATION}" && exit_error "Project already exists" 1
+
+MY_PATH="$(dirname -z "$(readlink -ne "${0}")")"
+MAKE_ESP_ARDUINO="${MY_PATH}/makeEspArduino"
+ESP_ARDUINO_IDE="${MY_PATH}/Arduino"
+PY2ENV="${MY_PATH}/py2env"
+PY2ENV_REQ="${MY_PATH}/py2requirements.txt"
+
+test ! -d "${MAKE_ESP_ARDUINO}" && git clone --depth=1 https://github.com/plerup/makeEspArduino.git "${MAKE_ESP_ARDUINO}"
+test ! -d "${ESP_ARDUINO_IDE}" && \
+  git clone --depth=1 https://github.com/esp8266/Arduino.git "${ESP_ARDUINO_IDE}" && \
+  (cd "${ESP_ARDUINO_IDE}/tools" && python get.py)
+test ! -d "${PY2ENV}" && pyenv-init python2 "${PY2ENV}" && pyenv-install "${PY2ENV_REQ}" "${PY2ENV}"
+
+mkdir -p "${LOCATION}/filesystem"
+
+MAKE_ESP_ARDUINO="${MAKE_ESP_ARDUINO}" \
+  ESP_ARDUINO_IDE="${ESP_ARDUINO_IDE}" \
+  PY2ENV="${PY2ENV}" \
+  envsubst <"${MY_PATH}/Makefile.template" >"${LOCATION}/Makefile"
+
+cp "${MY_PATH}/Main.ino" "${LOCATION}/"

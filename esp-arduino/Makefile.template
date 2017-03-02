@@ -1,0 +1,31 @@
+.PHONY: erase_flash serial
+
+SKETCH = Main.ino
+
+LIBS =
+
+# esp8266 or esp32
+CHIP = esp8266
+
+# Use 'make list_boards' to get list of available ones
+BOARD = nodemcuv2
+
+# Use 'make list_flash_defs' to get list of available ones
+FLASH_DEF = 4M1M
+
+FS_DIR = filesystem
+
+UPLOAD_PORT = /dev/ttyUSB0
+UPLOAD_SPEED = 921600
+RUNTIME_SPEED = 115200
+
+BUILD_DIR = build
+ESP_ROOT = ${ESP_ARDUINO_IDE}
+
+include ${MAKE_ESP_ARDUINO}/makeEspArduino.mk
+
+erase_flash:
+	bash -c '. "${PY2ENV}/bin/activate" && esptool.py --port $(UPLOAD_PORT) --baud $(RUNTIME_SPEED) erase_flash'
+
+serial:
+	bash -c '. "${PY2ENV}/bin/activate" && miniterm.py $(UPLOAD_PORT) $(RUNTIME_SPEED)'
