@@ -2,7 +2,7 @@
 
 if [ ! -z "${BASH_SOURCE}" ]; then
   if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
-    if [[ ":${PATH}:" != *"$(dirname -z "$(readlink -ne "${BASH_SOURCE[0]}")")"* ]]; then
+    if [[ ":${PATH}:" != *":$(dirname -z "$(readlink -ne "${BASH_SOURCE[0]}")"):"* ]]; then
       PATH="$(dirname -z "$(readlink -ne "${BASH_SOURCE[0]}")"):${PATH}"
     fi
   else
