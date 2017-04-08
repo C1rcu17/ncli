@@ -2,11 +2,11 @@
 
 if [ ! -z "${BASH_SOURCE}" ]; then
   if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
-    if [[ ":${PATH}:" != *":$(dirname -z "$(readlink -ne "${BASH_SOURCE[0]}")"):"* ]]; then
-      PATH="$(dirname -z "$(readlink -ne "${BASH_SOURCE[0]}")"):${PATH}"
+    if [[ ":${PATH}:" != *":$(dirname "$(readlink -e "${BASH_SOURCE[0]}")"):"* ]]; then
+      PATH="$(dirname "$(readlink -e "${BASH_SOURCE[0]}")"):${PATH}"
     fi
   else
-    echo -n "$(readlink -ne "${0}")"
+    echo "$(readlink -e "${0}")"
   fi
 else
   return 1 2>/dev/null || exit 1
