@@ -1,0 +1,107 @@
+ROOTFS = /root/rootfs
+SUITE = zesty
+ARCH = amd64
+MIRROR = http://pt.archive.ubuntu.com/ubuntu
+HOSTNAME = xps
+USERNAME = nuno
+
+---
+sudo -i
+apt-get install debootstrap
+
+# List suites:
+# ls -1A /usr/share/debootstrap/scripts/
+debootstrap --arch=^ARCH --variant=minbase --foreign ^SUITE "^ROOTFS" ^MIRROR
+
+# If host has a different architecture:
+# cp /usr/bin/qemu-arm-static "^ROOTFS/usr/bin"
+
+DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
+LC_ALL=C LANGUAGE=C LANG=C chroot "^ROOTFS" /debootstrap/debootstrap --second-stage
+
+
+# Change root
+mount -t proc proc "^ROOTFS/proc"
+mount -t sysfs sys "^ROOTFS/sys"
+mount -o bind /dev "^ROOTFS/dev"
+mount -o bind /dev/pts "^ROOTFS/dev/pts"
+LC_ALL=C LANGUAGE=C LANG=C chroot "^ROOTFS"
+
+echo nameserver 8.8.8.8 >/etc/resolv.conf
+
+# Setup apt sources and minimal system
+cat <<EOF >/etc/apt/sources.list
+deb ^MIRROR ^SUITE main restricted universe multiverse
+deb ^MIRROR ^SUITE-updates main restricted universe multiverse
+deb ^MIRROR ^SUITE-security main restricted universe multiverse
+EOF
+
+apt-get update
+apt-get install dialog
+apt-get install ubuntu-minimal
+
+# Setup locales
+rm -rfv /usr/lib/locale/*
+rm -rfv /var/lib/locales/supported.d/*
+
+mkdir -p /var/lib/locales/supported.d/
+cat <<EOF >/var/lib/locales/supported.d/local
+pt_PT.UTF-8 UTF-8
+en_US.UTF-8 UTF-8
+EOF
+
+cat <<EOF >/etc/default/locale
+LANG=en_US.UTF-8
+LANGUAGE=en_US:en
+LC_CTYPE=pt_PT.UTF-8
+LC_NUMERIC=pt_PT.UTF-8
+LC_TIME=pt_PT.UTF-8
+LC_COLLATE=pt_PT.UTF-8
+LC_MONETARY=pt_PT.UTF-8
+LC_MESSAGES=en_US.UTF-8
+LC_PAPER=pt_PT.UTF-8
+LC_NAME=pt_PT.UTF-8
+LC_ADDRESS=pt_PT.UTF-8
+LC_TELEPHONE=pt_PT.UTF-8
+LC_MEASUREMENT=pt_PT.UTF-8
+LC_IDENTIFICATION=pt_PT.UTF-8
+EOF
+
+locale-gen
+dpkg-reconfigure locales
+dpkg-reconfigure keyboard-configuration
+
+# Setup hostname
+echo "^HOSTNAME" >/etc/hostname
+
+# Add an admin user
+adduser ^USERNAME
+usermod -aG adm,cdrom,sudo,dip,plugdev ^USERNAME
+
+# Setup fstab
+# To list uuids:
+# blkid
+cat <<EOF >/etc/fstab
+# <file system>                           <mount point> <type> <options>         <dump> <pass>
+UUID=2d22f435-8a87-40e7-abbd-f84a7cb8593f /             ext4   errors=remount-ro 0      1
+UUID=3b7bd92a-99cd-485f-9d31-eb0f5544392d /data         ext4   defaults          0      2
+EOF
+
+# Install the rest of the system
+apt-get install ubuntu-standard
+apt-get install chromium-browser
+apt-get install ubuntu-gnome-desktop --no-install-recommends
+apt-get install gnome-core
+
+# Install a kernel & grub
+apt-get install linux-generic
+
+
+
+# Disable touchpad
+sudo nano /etc/modprobe.d/blacklist.conf
+--
+blacklist i2c_designware_platform
+--
+
+synclient TouchpadOff=1
