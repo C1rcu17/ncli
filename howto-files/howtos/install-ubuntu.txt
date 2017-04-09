@@ -1,5 +1,5 @@
 ROOTFS = /root/rootfs
-SUITE = zesty
+SUITE = yakkety
 ARCH = amd64
 MIRROR = http://pt.archive.ubuntu.com/ubuntu
 HOSTNAME = xps
@@ -7,7 +7,7 @@ USERNAME = nuno
 
 ---
 sudo -i
-apt-get install debootstrap
+apt-get install debootstrap pigz
 
 # List suites:
 # ls -1A /usr/share/debootstrap/scripts/
@@ -18,7 +18,6 @@ debootstrap --arch=^ARCH --variant=minbase --foreign ^SUITE "^ROOTFS" ^MIRROR
 
 DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
 LC_ALL=C LANGUAGE=C LANG=C chroot "^ROOTFS" /debootstrap/debootstrap --second-stage
-
 
 # Change root
 mount -t proc proc "^ROOTFS/proc"
@@ -38,7 +37,8 @@ EOF
 
 apt-get update
 apt-get install dialog
-apt-get install ubuntu-minimal
+apt-get install ubuntu-minimal nano
+apt-get dist-upgrade
 
 # Setup locales
 rm -rfv /usr/lib/locale/*
@@ -69,7 +69,6 @@ EOF
 
 locale-gen
 dpkg-reconfigure locales
-dpkg-reconfigure keyboard-configuration
 
 # Setup hostname
 echo "^HOSTNAME" >/etc/hostname
@@ -87,16 +86,29 @@ UUID=2d22f435-8a87-40e7-abbd-f84a7cb8593f /             ext4   errors=remount-ro
 UUID=3b7bd92a-99cd-485f-9d31-eb0f5544392d /data         ext4   defaults          0      2
 EOF
 
-# Install the rest of the system
+mkdir -p /data
+
+# Install a kernel & grub
+apt-get install linux-generic
+
+# Modify grub settings
+# nano /etc/default/grub
+update-grub
+
+# Install the rest of the system & modifications
 apt-get install ubuntu-standard
 apt-get install chromium-browser
 apt-get install ubuntu-gnome-desktop --no-install-recommends
 apt-get install gnome-core
 
-# Install a kernel & grub
-apt-get install linux-generic
+# Cleanup & exit
+apt-get clean
+rm -fv /var/lib/apt/lists/pt.archive.ubuntu.com_ubuntu_dists_^SUITE*
+echo >/etc/resolv.conf
+exit
 
-
+# Backup
+tar -cvpf - --one-file-system -C "^ROOTFS" . | pigz -5 >^SUITE-^ARCH.tgz
 
 # Disable touchpad
 sudo nano /etc/modprobe.d/blacklist.conf
