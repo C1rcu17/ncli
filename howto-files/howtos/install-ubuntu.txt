@@ -1,4 +1,5 @@
 ^
+HDD = /dev/sda
 ROOTFS = /root/rootfs
 SUITE = yakkety
 ARCH = amd64
@@ -11,6 +12,25 @@ sudo -i
 
 apt-get update
 apt-get install debootstrap pigz
+
+# Create a partition scheme on ^SDCARD like this:
+# Sector size (logical/physical): 512B/4096B
+# Partition Table: gpt
+# Disk Flags: 
+#
+# Number  Start   End    Size   File system  Name    Flags
+#  1      1049kB  269MB  268MB  fat32        EFI     boot, esp
+#  2      269MB   108GB  107GB  ext4         DEBIAN
+#  3      108GB   250GB  142GB  ext4         DATA
+
+mkdir -p "^ROOTFS"
+
+umount ^HDD*
+mount ^{HDD}2 "^ROOTFS"
+mkdir -p "^ROOTFS/boot/efi"
+mkdir -p "^ROOTFS/data"
+mount ^{HDD}1 "^ROOTFS/boot/efi"
+mount ^{HDD}3 "^ROOTFS/data"
 
 # List suites:
 # ls -1A /usr/share/debootstrap/scripts/
