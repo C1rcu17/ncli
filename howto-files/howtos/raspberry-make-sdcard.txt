@@ -1,0 +1,220 @@
+^
+ROOTFS = /root/rootfs
+SDCARD = /dev/sde
+
+---
+sudo -i
+
+apt-get update
+apt-get install qemu-user-static f2fs-tools
+
+# Create a partition scheme on ^SDCARD like this:
+#
+# Device     Boot Start      End  Sectors  Size Id Type
+# Number  Start   End     Size    Type     File system  Flags
+#  1      1049kB  35,7MB  34,6MB  primary  fat32
+#  2      35,7MB  7948MB  7913MB  primary  f2fs
+
+mkdir -p "^ROOTFS"
+
+umount ^SDCARD*
+mount ^{SDCARD}2 "^ROOTFS"
+mkdir "^ROOTFS/boot"
+mount ^{SDCARD}1 "^ROOTFS/boot"
+
+tar -xvpzf raspbian.tgz -C "^ROOTFS" --numeric-owner
+
+cp "$(which qemu-arm-static)" "^ROOTFS/usr/bin"
+
+# Change root (ubuntu-install)
+
+# Patch to make qemu emulation work
+echo > /etc/ld.so.preload
+
+# Setup locales
+rm -rfv /usr/lib/locale/*
+
+cat <<EOF >/etc/locale.gen
+pt_PT.UTF-8 UTF-8
+en_US.UTF-8 UTF-8
+EOF
+
+cat <<EOF >/etc/default/locale
+LANG=en_US.UTF-8
+LANGUAGE=en_US:en
+LC_CTYPE=pt_PT.UTF-8
+LC_NUMERIC=pt_PT.UTF-8
+LC_TIME=pt_PT.UTF-8
+LC_COLLATE=pt_PT.UTF-8
+LC_MONETARY=pt_PT.UTF-8
+LC_MESSAGES=en_US.UTF-8
+LC_PAPER=pt_PT.UTF-8
+LC_NAME=pt_PT.UTF-8
+LC_ADDRESS=pt_PT.UTF-8
+LC_TELEPHONE=pt_PT.UTF-8
+LC_MEASUREMENT=pt_PT.UTF-8
+LC_IDENTIFICATION=pt_PT.UTF-8
+EOF
+
+locale-gen
+dpkg-reconfigure locales
+dpkg-reconfigure tzdata
+dpkg-reconfigure keyboard-configuration
+
+# Change passwords
+passwd
+passwd pi
+
+# Setup fstab
+# To list uuids:
+# blkid
+nano /etc/fstab
+-=
+PARTUUID=4cbe0dbd-01
+PARTUUID=4cbe0dbd-02  /               f2fs
+--
+
+# Setup bootloader
+nano /boot/cmdline.txt
+-=
+root=PARTUUID=4cbe0dbd-02 rootfstype=f2fs
+--
+
+# Install the rest of the system & modifications
+apt-get update
+apt-get dist-upgrade
+apt-get install wireless-tools wpasupplicant
+apt-get install raspberrypi-kernel-headers
+
+# Enable ssh on boot
+apt-get install openssh-server
+touch /boot/ssh
+
+# Setup networks
+cat <<EOF >/etc/network/interfaces
+auto lo
+iface lo inet loopback
+
+iface eth0 inet static
+    address 10.0.0.90
+    netmask 255.255.255.0
+    gateway 10.0.0.1
+    network 10.0.0.0
+    broadcast 10.0.0.255
+    dns-nameservers 10.0.0.1
+
+allow-hotplug wlan0
+iface wlan0 inet static
+    address 10.0.0.91
+    netmask 255.255.255.0
+    gateway 10.0.0.1
+    network 10.0.0.0
+    broadcast 10.0.0.255
+    dns-nameservers 10.0.0.1
+    wpa-conf /etc/wpa_supplicant/wpa_supplicant.conf
+EOF
+
+wpa_passphrase <SSID> <password> >/etc/wpa_supplicant/wpa_supplicant.conf
+
+# Cleanup (ubuntu-install)
+echo "/usr/lib/arm-linux-gnueabihf/libarmmem.so" >/etc/ld.so.preload
+
+# Exit
+exit
+
+# Before umount kill all processes with:
+# fuser -k ^ROOTFS
+
+##############################################
+# Install TP-LINK TL-WN725N driver (rtl8188eu)
+
+(cd /lib/firmware/rtlwifi && wget https://github.com/lwfinger/rtl8188eu/raw/master/rtl8188eufw.bin)
+
+# Install Adafruit 2.8" PiTFT Plus Capacitive
+nano /boot/config.txt
+---- Change to match
+dtparam=i2c_arm=on
+dtparam=i2c1=on
+dtparam=spi=on
+
+# Enable pitft
+device_tree=bcm2709-rpi-2-b.dtb
+dtoverlay=pitft28-capacitive
+dtparam=speed=16000000
+dtparam=rotate=270
+dtparam=fps=16
+dtparam=touch-invy=true
+dtparam=touch-swapxy=true
+----
+
+nano /boot/cmdline.txt
+---- Append after rootwait
+fbcon=map:10 fbcon=font:VGA8x8
+----
+
+dpkg-reconfigure console-setup
+# UTF-8 > Guess optimal character set > Terminus > 6x12 (framebuffer only)
+
+nano /etc/udev/rules.d/95-ft6236.rules
+---- Set
+SUBSYSTEM=="input", ATTRS{name}=="ft6236", ENV{DEVNAME}=="*event*", SYMLINK+="input/touchscreen"
+----
+
+nano /usr/share/X11/xorg.conf.d/99-fbturbo.conf
+---- Change to match
+Section "Device"
+        Identifier      "Adafruit PiTFT"
+        Driver          "fbturbo"
+        Option          "fbdev" "/dev/fb1"
+        Option          "SwapbuffersWait" "true"
+EndSection
+----
+
+
+########################################## VNC
+
+
+apt-get install tmux xvfb x11vnc openbox feh
+
+raspivid -o - -t 0 -hf -w 640 -h 360 -fps 25 | cvlc -vvv stream:///dev/stdin --sout '#rtp{sdp=rtsp://:8554}' :demux=h264
+
+
+# V4L2 Driver for raspicamera
+sudo modprobe bcm2835-v4l2
+
+v4l2-ctl --set-fmt-video=width=1920,height=1088,pixelformat=4
+v4l2-ctl --stream-mmap=3 --stream-count=100 --stream-to=somefile.264
+
+v4l2-ctl --list-ctrls
+v4l2-ctl --set-ctrl brightness=100
+
+# Stream server
+# http://www.linux-projects.org/uv4l/installation/
+
+curl http://www.linux-projects.org/listing/uv4l_repo/lrkey.asc | sudo apt-key add -
+sudo nano /etc/apt/sources.list
+--
+deb http://www.linux-projects.org/listing/uv4l_repo/raspbian/ jessie main
+--
+sudo apt-get update
+
+sudo apt-get install uv4l uv4l-raspicam uv4l-raspicam-extras
+
+# Rtsp server
+
+git clone https://github.com/mpromonet/v4l2rtspserver.git
+cd v4l2rtspserver
+
+wget http://www.live555.com/liveMedia/public/live555-latest.tar.gz -O - | tar xvzf -
+cd live
+./genMakefiles linux
+sudo make CPPFLAGS=-DALLOW_RTSP_SERVER_PORT_REUSE=1 install
+
+cd ..
+cmake .
+cmake .
+make
+cpack .
+
+v4l2rtspserver -F 30 -W 640 -H 360 -P 8554 /dev/video0
+gst-launch-1.0 rtspsrc location=rtsp://10.0.0.91:8554/unicast latency=0 ! decodebin ! videoconvert ! autovideosink

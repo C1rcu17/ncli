@@ -1,0 +1,27 @@
+^
+ROOTFS = /root/rootfs
+
+---
+sudo -i
+
+apt-get update
+apt-get install kpartx pigz
+
+wget -O raspbian.zip https://downloads.raspberrypi.org/raspbian_lite_latest
+unzip -p raspbian.zip "$(unzip -Z1 raspbian.zip | sed -n 1p)" >raspbian.img
+
+kpartx -avs raspbian.img
+
+mkdir -p "^ROOTFS"
+
+mount /dev/mapper/loop0p2 "^ROOTFS"
+mount /dev/mapper/loop0p1 "^ROOTFS/boot"
+
+tar -cvpf - -C "^ROOTFS" . | pigz -5 >raspbian.tgz
+
+umount "^ROOTFS/boot"
+umount "^ROOTFS"
+
+kpartx -dv raspbian.img
+
+rm raspbian.zip raspbian.img

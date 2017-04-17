@@ -1,3 +1,4 @@
+^
 ROOTFS = /root/rootfs
 SUITE = yakkety
 ARCH = amd64
@@ -7,6 +8,8 @@ USERNAME = nuno
 
 ---
 sudo -i
+
+apt-get update
 apt-get install debootstrap pigz
 
 # List suites:
@@ -14,7 +17,7 @@ apt-get install debootstrap pigz
 debootstrap --arch=^ARCH --variant=minbase --foreign ^SUITE "^ROOTFS" ^MIRROR
 
 # If host has a different architecture:
-# cp /usr/bin/qemu-arm-static "^ROOTFS/usr/bin"
+# cp "$(which qemu-arm-static)" "^ROOTFS/usr/bin"
 
 DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
 LC_ALL=C LANGUAGE=C LANG=C chroot "^ROOTFS" /debootstrap/debootstrap --second-stage
@@ -69,6 +72,7 @@ EOF
 
 locale-gen
 dpkg-reconfigure locales
+dpkg-reconfigure tzdata
 
 # Setup hostname
 echo "^HOSTNAME" >/etc/hostname
@@ -101,10 +105,29 @@ apt-get install chromium-browser
 apt-get install ubuntu-gnome-desktop --no-install-recommends
 apt-get install gnome-core
 
-# Cleanup & exit
+# Forbid certain packages
+nano /etc/apt/preferences.d/blocked-packages
+---- Sets
+Package: gnome-calendar gnome-mahjongg gnome-mines gnome-orca gnome-photos gnome-sudoku gnome-weather gnome-maps gnome-music
+Pin: release *
+Pin-Priority: -1
+
+Package: unoconv libreoffice-core libreoffice-calc libreoffice-gnome libreoffice-impress libreoffice-math libreoffice-ogltrans libreoffice-pdfimport libreoffice-style-tango libreoffice-writer
+Pin: release *
+Pin-Priority: -1
+
+Package: evolution firefox totem rhythmbox cheese whoopsie xterm
+Pin: release *
+Pin-Priority: -1
+----
+
+# Cleanup
 apt-get clean
-rm -fv /var/lib/apt/lists/pt.archive.ubuntu.com_ubuntu_dists_^SUITE*
+find /var/lib/apt/lists/ -mindepth 1 -maxdepth 1 ! -name lock ! -name partial -print0 | xargs -0 -I% rm -rfv "%"
 echo >/etc/resolv.conf
+rm /usr/bin/qemu-arm-static
+
+# Exit
 exit
 
 # Backup
