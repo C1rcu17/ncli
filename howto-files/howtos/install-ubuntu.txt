@@ -1,7 +1,7 @@
 ^
 HDD = /dev/sda
 ROOTFS = /root/rootfs
-SUITE = yakkety
+SUITE = zesty
 ARCH = amd64
 MIRROR = http://pt.archive.ubuntu.com/ubuntu
 HOSTNAME = xps
@@ -13,7 +13,7 @@ sudo -i
 apt-get update
 apt-get install debootstrap pigz
 
-# Create a partition scheme on ^SDCARD like this:
+# Create a partition scheme on ^HDD like this:
 # Sector size (logical/physical): 512B/4096B
 # Partition Table: gpt
 # Disk Flags: 
@@ -106,8 +106,9 @@ usermod -aG adm,cdrom,sudo,dip,plugdev ^USERNAME
 # blkid
 cat <<EOF >/etc/fstab
 # <file system>                           <mount point> <type> <options>         <dump> <pass>
-UUID=2d22f435-8a87-40e7-abbd-f84a7cb8593f /             ext4   errors=remount-ro 0      1
-UUID=3b7bd92a-99cd-485f-9d31-eb0f5544392d /data         ext4   defaults          0      2
+UUID=7AE0-269D                            /boot/efi     vfat   defaults          0      1
+UUID=da121d12-3bad-4f67-a932-fdeaba35544d /             ext4   errors=remount-ro 0      1
+UUID=28eda441-5ad7-40b1-b987-af7f69b37516 /data         ext4   defaults          0      2
 EOF
 
 mkdir -p /data
