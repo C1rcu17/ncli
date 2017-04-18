@@ -1,5 +1,4 @@
 ^
-HDD = /dev/sda
 ROOTFS = /root/rootfs
 SUITE = zesty
 ARCH = amd64
@@ -13,24 +12,7 @@ sudo -i
 apt-get update
 apt-get install debootstrap pigz
 
-# Create a partition scheme on ^HDD like this:
-# Sector size (logical/physical): 512B/4096B
-# Partition Table: gpt
-# Disk Flags: 
-#
-# Number  Start   End    Size   File system  Name    Flags
-#  1      1049kB  269MB  268MB  fat32        EFI     boot, esp
-#  2      269MB   108GB  107GB  ext4         DEBIAN
-#  3      108GB   250GB  142GB  ext4         DATA
-
 mkdir -p "^ROOTFS"
-
-umount ^HDD*
-mount ^{HDD}2 "^ROOTFS"
-mkdir -p "^ROOTFS/boot/efi"
-mkdir -p "^ROOTFS/data"
-mount ^{HDD}1 "^ROOTFS/boot/efi"
-mount ^{HDD}3 "^ROOTFS/data"
 
 # List suites:
 # ls -1A /usr/share/debootstrap/scripts/
@@ -101,46 +83,24 @@ echo "^HOSTNAME" >/etc/hostname
 adduser ^USERNAME
 usermod -aG adm,cdrom,sudo,dip,plugdev ^USERNAME
 
-# Setup fstab
-# To list uuids:
-# blkid
-cat <<EOF >/etc/fstab
-# <file system>                           <mount point> <type> <options>         <dump> <pass>
-UUID=7AE0-269D                            /boot/efi     vfat   defaults          0      1
-UUID=da121d12-3bad-4f67-a932-fdeaba35544d /             ext4   errors=remount-ro 0      1
-UUID=28eda441-5ad7-40b1-b987-af7f69b37516 /data         ext4   defaults          0      2
-EOF
-
-mkdir -p /data
-
 # Install a kernel & grub
-apt-get install linux-generic
+apt-get install grub-efi linux-generic
 
 # Modify grub settings
 # nano /etc/default/grub
 update-grub
 
-# Install the rest of the system & modifications
-apt-get install ubuntu-standard
-apt-get install chromium-browser
-apt-get install ubuntu-gnome-desktop --no-install-recommends
-apt-get install gnome-core
-
 # Forbid certain packages
 nano /etc/apt/preferences.d/blocked-packages
----- Sets
-Package: gnome-calendar gnome-mahjongg gnome-mines gnome-orca gnome-photos gnome-sudoku gnome-weather gnome-maps gnome-music
-Pin: release *
-Pin-Priority: -1
-
-Package: unoconv libreoffice-core libreoffice-calc libreoffice-gnome libreoffice-impress libreoffice-math libreoffice-ogltrans libreoffice-pdfimport libreoffice-style-tango libreoffice-writer
-Pin: release *
-Pin-Priority: -1
-
-Package: evolution firefox totem rhythmbox cheese whoopsie xterm
+---- Set
+Package: network-manager-gnome plasma-nm
 Pin: release *
 Pin-Priority: -1
 ----
+
+# Install the rest of the system & modifications
+apt-get install ubuntu-standard
+apt-get install network-manager
 
 # Cleanup
 apt-get clean
@@ -153,11 +113,3 @@ exit
 
 # Backup
 tar -cvpf - --one-file-system -C "^ROOTFS" . | pigz -5 >^SUITE-^ARCH.tgz
-
-# Disable touchpad
-sudo nano /etc/modprobe.d/blacklist.conf
---
-blacklist i2c_designware_platform
---
-
-synclient TouchpadOff=1

@@ -1,0 +1,59 @@
+^
+HDD = /dev/sda
+ROOTFS = /root/rootfs
+
+---
+sudo -i
+
+# Create a partition scheme on ^HDD like this:
+# Partition Table: gpt
+# Disk Flags: 
+#
+# Number  Start   End    Size    File system     Name    Flags
+#  1      1049kB  269MB  268MB   fat32           EFI     boot, esp
+#  2      269MB   108GB  107GB   ext4            DEBIAN
+#  3      108GB   242GB  134GB   ext4            DATA
+#  4      242GB   250GB  8198MB  linux-swap(v1)  SWAP
+
+umount ^HDD*
+
+mkdir -p "^ROOTFS"
+mount ^{HDD}2 "^ROOTFS"
+
+tar -xvpzf rootfs.tgz -C "^ROOTFS" --numeric-owner
+
+mkdir -p "^ROOTFS/boot/efi"
+mkdir -p "^ROOTFS/data"
+mount ^{HDD}1 "^ROOTFS/boot/efi"
+mount ^{HDD}3 "^ROOTFS/data"
+
+# If host has a different architecture:
+# cp "$(which qemu-arm-static)" "^ROOTFS/usr/bin"
+
+# Change root
+mount -t proc proc "^ROOTFS/proc"
+mount -t sysfs sys "^ROOTFS/sys"
+mount -o bind /dev "^ROOTFS/dev"
+mount -o bind /dev/pts "^ROOTFS/dev/pts"
+chroot "^ROOTFS"
+
+# Setup fstab
+# To list uuids:
+# blkid
+cat <<EOF >/etc/fstab
+# <file system>                           <mount point> <type> <options>         <dump> <pass>
+UUID=4100-D271                            /boot/efi     vfat   defaults          0      1
+UUID=009fd3b2-3dc2-4e59-b1d1-a085ab811797 /             ext4   errors=remount-ro 0      1
+UUID=e17a789e-8cde-4c4d-ab9f-f3587b6ffdaa /data         ext4   defaults          0      2
+UUID=a9d73ca0-f9e4-486a-892f-c5becde1f6bf none          swap   defaults          0      0
+EOF
+
+# Install grub to the EFI partition
+update-grub
+grub-install
+
+# Cleanup
+rm /usr/bin/qemu-arm-static
+
+# Exit
+exit
