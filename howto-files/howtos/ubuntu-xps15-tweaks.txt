@@ -1,0 +1,10 @@
+^
+
+---
+# Disable touchpad
+sudo nano /etc/modprobe.d/blacklist.conf
+---- Add
+blacklist i2c_designware_platform
+----
+
+synclient TouchpadOff=1
