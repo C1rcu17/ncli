@@ -1,10 +1,57 @@
 ^
 
 ---
-# Disable touchpad
+####################
+# Disable touchpad #
+####################
 sudo nano /etc/modprobe.d/blacklist.conf
 ---- Add
 blacklist i2c_designware_platform
 ----
 
 synclient TouchpadOff=1
+
+##############################
+# Install dedicated graphics #
+##############################
+
+sudo apt-get install mesa-utils nvidia-375 nvidia-settings nvidia-prime
+sudo prime-select intel
+
+# Reboot the computer
+
+sudo apt-get install bumblebee bumblebee-nvidia
+
+sudo nano /etc/modprobe.d/bumblebee.conf
+---- Add
+# 375
+blacklist nvidia-375
+blacklist nvidia-375-updates
+blacklist nvidia-experimental-375
+----
+
+nano
+---- Change to match
+Driver=nvidia
+
+[driver-nvidia]
+KernelDriver=nvidia-375
+LibraryPath=/usr/lib/nvidia-375:/usr/lib32/nvidia-375
+XorgModulePath=/usr/lib/nvidia-375/xorg,/usr/lib/xorg/modules
+----
+
+# Reboot the computer
+
+# Test
+cat /proc/acpi/bbswitch
+optirun cat /proc/acpi/bbswitch
+cat /proc/acpi/bbswitch
+
+glxinfo | egrep "OpenGL vendor|OpenGL renderer*"
+optirun glxinfo | egrep "OpenGL vendor|OpenGL renderer*"
+
+glxgears
+optirun glxgears
+
+# Power off discrete graphics
+sudo tee /proc/acpi/bbswitch <<<OFF
